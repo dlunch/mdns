@@ -172,7 +172,7 @@ impl Name {
 
                 break;
             } else {
-                let label = stream.read(length as usize);
+                let label = stream.read(length);
                 labels.push(str::from_utf8(label)?.into());
             }
         }
@@ -423,7 +423,7 @@ impl ResourceRecord {
 
         self.data.r#type().write(stream);
         self.class.write(stream);
-        stream.write_u32(self.ttl as u32);
+        stream.write_u32(self.ttl);
 
         self.data.write(stream);
     }
