@@ -8,10 +8,15 @@ use std::{
 use nix::sys::socket::{self, sockopt, ControlMessage, ControlMessageOwned, MsgFlags, SockaddrIn};
 use tokio::io::unix::AsyncFd;
 
+#[cfg(target_os = "linux")]
+type InterfaceType = i32;
+#[cfg(target_os = "macos")]
+type InterfaceType = u32;
+
 pub struct Message {
     pub data: Vec<u8>,
     pub sender: SocketAddrV4,
-    pub interface: i32,
+    pub interface: InterfaceType,
 }
 
 pub struct MulticastSocket {
@@ -73,13 +78,13 @@ impl MulticastSocket {
         })
     }
 
-    pub async fn write(&mut self, data: &[u8], interface: i32) -> io::Result<usize> {
+    pub async fn write(&mut self, data: &[u8], interface: InterfaceType) -> io::Result<usize> {
         let address = self.address;
 
         self.write_to(data, interface, &address).await
     }
 
-    pub async fn write_to(&mut self, data: &[u8], interface: i32, dst_addr: &SocketAddrV4) -> io::Result<usize> {
+    pub async fn write_to(&mut self, data: &[u8], interface: InterfaceType, dst_addr: &SocketAddrV4) -> io::Result<usize> {
         loop {
             let mut guard = self.socket.writable().await?;
 
@@ -90,7 +95,7 @@ impl MulticastSocket {
         }
     }
 
-    fn write_inner(fd: RawFd, data: &[u8], interface: i32, dst_addr: &SocketAddrV4) -> io::Result<usize> {
+    fn write_inner(fd: RawFd, data: &[u8], interface: InterfaceType, dst_addr: &SocketAddrV4) -> io::Result<usize> {
         let mut pkt_info: libc::in_pktinfo = unsafe { mem::zeroed() };
         pkt_info.ipi_ifindex = interface;
 
