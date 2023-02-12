@@ -8,16 +8,7 @@ use std::{
 use nix::sys::socket::{self, sockopt, ControlMessage, ControlMessageOwned, MsgFlags, SockaddrIn};
 use tokio::io::unix::AsyncFd;
 
-#[cfg(target_os = "linux")]
-type InterfaceType = i32;
-#[cfg(target_os = "macos")]
-type InterfaceType = u32;
-
-pub struct Message {
-    pub data: Vec<u8>,
-    pub sender: SocketAddrV4,
-    pub interface: InterfaceType,
-}
+use super::{InterfaceType, Message};
 
 pub struct MulticastSocket {
     socket: AsyncFd<UdpSocket>,
