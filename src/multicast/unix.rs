@@ -1,12 +1,12 @@
 use std::{
     io::{self, IoSlice, IoSliceMut},
     mem,
-    net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4},
+    net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket},
     os::fd::{AsRawFd, RawFd},
 };
 
 use nix::sys::socket::{self, sockopt, ControlMessage, ControlMessageOwned, MsgFlags, SockaddrIn};
-use tokio::{io::unix::AsyncFd, net::UdpSocket};
+use tokio::io::unix::AsyncFd;
 
 pub struct Message {
     pub data: Vec<u8>,
@@ -20,7 +20,7 @@ pub struct MulticastSocket {
 
 impl MulticastSocket {
     pub async fn new(multicast_addr: Ipv4Addr, port: u16) -> io::Result<Self> {
-        let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, port)).await?;
+        let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, port))?;
 
         socket::setsockopt(socket.as_raw_fd(), sockopt::Ipv4PacketInfo, &true).map_err(Self::map_err)?;
 
@@ -28,7 +28,7 @@ impl MulticastSocket {
 
         for interface in interfaces {
             if let IpAddr::V4(ip) = interface.addr.ip() {
-                socket.join_multicast_v4(multicast_addr, ip)?;
+                socket.join_multicast_v4(&multicast_addr, &ip)?;
             }
         }
 
