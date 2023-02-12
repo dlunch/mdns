@@ -1,7 +1,7 @@
 use std::{
     io::{self, IoSlice, IoSliceMut},
     mem,
-    net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket},
+    net::{IpAddr, Ipv4Addr, SocketAddrV4, UdpSocket},
     os::fd::{AsRawFd, RawFd},
 };
 
