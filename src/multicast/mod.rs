@@ -5,6 +5,7 @@ pub use unix::MulticastSocket;
 
 #[cfg(windows)]
 mod windows;
+#[cfg(windows)]
 pub use windows::MulticastSocket;
 
 #[cfg(target_os = "linux")]
