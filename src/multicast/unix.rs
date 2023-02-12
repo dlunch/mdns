@@ -16,6 +16,7 @@ pub struct Message {
 
 pub struct MulticastSocket {
     socket: AsyncFd<UdpSocket>,
+    address: SocketAddrV4,
 }
 
 impl MulticastSocket {
@@ -34,6 +35,7 @@ impl MulticastSocket {
 
         Ok(Self {
             socket: AsyncFd::new(socket)?,
+            address: SocketAddrV4::new(multicast_addr, port),
         })
     }
 
@@ -72,13 +74,9 @@ impl MulticastSocket {
     }
 
     pub async fn write(&mut self, data: &[u8], interface: i32) -> io::Result<usize> {
-        let dst_addr = if let SocketAddr::V4(x) = self.socket.get_ref().local_addr()? {
-            x
-        } else {
-            panic!("unsupported")
-        };
+        let address = self.address;
 
-        self.write_to(data, interface, &dst_addr).await
+        self.write_to(data, interface, &address).await
     }
 
     pub async fn write_to(&mut self, data: &[u8], interface: i32, dst_addr: &SocketAddrV4) -> io::Result<usize> {
