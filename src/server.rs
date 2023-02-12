@@ -62,7 +62,7 @@ impl Server {
                 if let Some(unicast_response) = unicast_response {
                     let response = unicast_response.write();
 
-                    trace!("sending response to {:?}, raw {:?}", message.sender, response);
+                    trace!("sending unicast response to {:?}, raw {:?}", message.sender, response);
 
                     socket.write_to(&response, message.interface, &message.sender).await?;
                 }
@@ -70,7 +70,7 @@ impl Server {
                 if let Some(multicast_response) = multicast_response {
                     let response = multicast_response.write();
 
-                    trace!("sending response to {:?}, raw {:?}", message.sender, response);
+                    trace!("sending multicast response to {:?}, raw {:?}", message.sender, response);
                     socket.write(&response, message.interface).await?;
                 }
             }
