@@ -1,3 +1,5 @@
+mod wsa;
+
 use std::{
     io,
     net::{Ipv4Addr, SocketAddrV4},

@@ -6,7 +6,7 @@ pub use unix::MulticastSocket;
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
-pub use windows::MulticastSocket;
+pub use self::windows::MulticastSocket;
 
 #[cfg(not(target_os = "macos"))]
 type InterfaceType = i32;
