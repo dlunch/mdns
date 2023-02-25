@@ -12,8 +12,8 @@ use windows::{
 };
 
 lazy_static! {
-    static ref WSASendMsg: LPFN_WSASENDMSG = get_wsa_send_msg_ptr();
-    static ref WSARecvMsg: LPFN_WSARECVMSG = get_wsa_recv_msg_ptr();
+    pub static ref WSASendMsg: LPFN_WSASENDMSG = get_wsa_send_msg_ptr();
+    pub static ref WSARecvMsg: LPFN_WSARECVMSG = get_wsa_recv_msg_ptr();
 }
 
 fn get_wsa_send_msg_ptr() -> LPFN_WSASENDMSG {

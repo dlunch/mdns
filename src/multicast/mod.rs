@@ -8,9 +8,9 @@ mod windows;
 #[cfg(windows)]
 pub use self::windows::MulticastSocket;
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
 type InterfaceType = i32;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 type InterfaceType = u32;
 
 pub struct Message {
