@@ -8,6 +8,8 @@ use std::{
     ptr::null_mut,
     sync::Once,
 };
+
+use tokio::task;
 use windows::{
     core::PSTR,
     Win32::Networking::WinSock::{
@@ -16,8 +18,9 @@ use windows::{
     },
 };
 
-use super::{InterfaceType, Message};
 use wsa::WSARecvMsg;
+
+use super::{InterfaceType, Message};
 
 pub struct MulticastSocket {
     socket: UdpSocket,
@@ -66,38 +69,38 @@ impl MulticastSocket {
     }
 
     pub async fn read(&self) -> io::Result<Message> {
-        let mut data_buffer = vec![0; 1024];
-        let mut data = WSABUF {
-            buf: PSTR::from_raw(data_buffer.as_mut_ptr()),
-            len: data_buffer.len() as u32,
-        };
+        let socket = self.socket.as_raw_socket();
 
-        let mut control_buffer = [0; size_of::<CMSGHDR>() + size_of::<IN_PKTINFO>()];
-        let control = WSABUF {
-            buf: PSTR::from_raw(control_buffer.as_mut_ptr()),
-            len: control_buffer.len() as u32,
-        };
+        let (r, data_buffer, origin_address, control_buffer, read_bytes) = task::spawn_blocking(move || unsafe {
+            let mut data_buffer = vec![0; 1024];
+            let mut origin_address = zeroed::<SOCKADDR_IN>();
+            let mut control_buffer = [0; size_of::<CMSGHDR>() + size_of::<IN_PKTINFO>()];
+            let mut read_bytes = 0;
 
-        let mut origin_address = unsafe { zeroed::<SOCKADDR_IN>() };
-        let mut wsa_msg = WSAMSG {
-            name: &mut origin_address as *mut SOCKADDR_IN as _,
-            namelen: size_of_val(&origin_address) as i32,
-            lpBuffers: &mut data,
-            Control: control,
-            dwBufferCount: 1,
-            dwFlags: 0,
-        };
+            let mut data = WSABUF {
+                buf: PSTR::from_raw(data_buffer.as_mut_ptr()),
+                len: data_buffer.len() as _,
+            };
 
-        let mut read_bytes = 0;
-        let r = unsafe {
-            (WSARecvMsg.unwrap())(
-                SOCKET(self.socket.as_raw_socket() as usize),
-                &mut wsa_msg,
-                &mut read_bytes,
-                null_mut(),
-                None,
-            )
-        };
+            let control = WSABUF {
+                buf: PSTR::from_raw(control_buffer.as_mut_ptr()),
+                len: control_buffer.len() as _,
+            };
+
+            let mut wsa_msg = WSAMSG {
+                name: &mut origin_address as *mut SOCKADDR_IN as _,
+                namelen: size_of_val(&origin_address) as _,
+                lpBuffers: &mut data,
+                Control: control,
+                dwBufferCount: 1,
+                dwFlags: 0,
+            };
+
+            let r = (WSARecvMsg.unwrap())(SOCKET(socket as _), &mut wsa_msg, &mut read_bytes, null_mut(), None);
+
+            (r, data_buffer, origin_address, control_buffer, read_bytes)
+        })
+        .await?;
 
         if r != 0 {
             return Err(io::Error::last_os_error());
