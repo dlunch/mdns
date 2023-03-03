@@ -18,12 +18,13 @@ use windows::{
     },
 };
 
-use wsa::WSARecvMsg;
+use wsa::{WSARecvMsg, WSASendMsg};
 
 use super::{InterfaceType, Message};
 
 pub struct MulticastSocket {
     socket: UdpSocket,
+    address: SocketAddrV4,
 }
 
 fn init() {
@@ -65,7 +66,10 @@ impl MulticastSocket {
             }
         }
 
-        Ok(Self { socket })
+        Ok(Self {
+            socket,
+            address: SocketAddrV4::new(multicast_addr, port),
+        })
     }
 
     pub async fn read(&self) -> io::Result<Message> {
@@ -121,7 +125,54 @@ impl MulticastSocket {
         unimplemented!()
     }
 
-    pub async fn write_to(&mut self, _data: &[u8], _interface: InterfaceType, _dst_addr: &SocketAddrV4) -> io::Result<usize> {
-        unimplemented!()
+    pub async fn write_to(&mut self, data: &[u8], interface: InterfaceType, dst_addr: &SocketAddrV4) -> io::Result<usize> {
+        let mut data = WSABUF {
+            buf: PSTR::from_raw(data.as_ptr() as *mut _),
+            len: data.len() as _,
+        };
+
+        let mut control_buffer = [0; size_of::<CMSGHDR>() + size_of::<IN_PKTINFO>()];
+        unsafe {
+            *(control_buffer[..size_of::<CMSGHDR>()].as_ptr() as *mut CMSGHDR) = CMSGHDR {
+                cmsg_len: size_of::<CMSGHDR>() + size_of::<IN_PKTINFO>(),
+                cmsg_level: IPPROTO_IP as _,
+                cmsg_type: IP_PKTINFO as _,
+            };
+
+            *(control_buffer[size_of::<CMSGHDR>()..].as_ptr() as *mut IN_PKTINFO) = IN_PKTINFO {
+                ipi_addr: (*dst_addr.ip()).into(),
+                ipi_ifindex: interface,
+            }
+        }
+
+        let control = WSABUF {
+            buf: PSTR::from_raw(control_buffer.as_mut_ptr()),
+            len: control_buffer.len() as _,
+        };
+
+        let mut destination = SOCKADDR_IN {
+            sin_family: ADDRESS_FAMILY(AF_INET.0 as _),
+            sin_port: self.address.port().to_be(),
+            sin_addr: (*self.address.ip()).into(),
+            sin_zero: [Default::default(); 8],
+        };
+
+        let mut wsa_msg = WSAMSG {
+            name: &mut destination as *mut _ as *mut _,
+            namelen: size_of_val(&destination) as _,
+            lpBuffers: &mut data,
+            Control: control,
+            dwBufferCount: 1,
+            dwFlags: 0,
+        };
+
+        let mut sent_bytes = 0;
+        let socket = self.socket.as_raw_socket();
+        let r = unsafe { (WSASendMsg.unwrap())(SOCKET(socket as _), &mut wsa_msg, 0, &mut sent_bytes, null_mut(), None) };
+        if r != 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        Ok(sent_bytes as _)
     }
 }
