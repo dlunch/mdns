@@ -121,8 +121,10 @@ impl MulticastSocket {
         })
     }
 
-    pub async fn write(&mut self, _data: &[u8], _interface: InterfaceType) -> io::Result<usize> {
-        unimplemented!()
+    pub async fn write(&mut self, data: &[u8], interface: InterfaceType) -> io::Result<usize> {
+        let address = self.address;
+
+        self.write_to(data, interface, &address).await
     }
 
     pub async fn write_to(&mut self, data: &[u8], interface: InterfaceType, dst_addr: &SocketAddrV4) -> io::Result<usize> {
