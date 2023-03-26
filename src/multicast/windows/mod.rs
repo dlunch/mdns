@@ -13,8 +13,8 @@ use tokio::task;
 use windows::{
     core::PSTR,
     Win32::Networking::WinSock::{
-        bind, setsockopt, socket, ADDRESS_FAMILY, AF_INET, CMSGHDR, IN_PKTINFO, IPPROTO_IP, IPPROTO_UDP, IP_PKTINFO, SOCKADDR_IN, SOCKET, SOCK_DGRAM,
-        SOL_SOCKET, SO_REUSEADDR, WSABUF, WSAMSG,
+        bind, setsockopt, socket, WSAGetLastError, ADDRESS_FAMILY, AF_INET, CMSGHDR, IN_PKTINFO, IPPROTO_IP, IPPROTO_UDP, IP_PKTINFO, SOCKADDR_IN,
+        SOCKET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, WSABUF, WSAMSG,
     },
 };
 
@@ -107,7 +107,8 @@ impl MulticastSocket {
         .await?;
 
         if r != 0 {
-            return Err(io::Error::last_os_error());
+            let error = unsafe { WSAGetLastError() };
+            return Err(io::Error::from_raw_os_error(error.0));
         }
 
         let sender = SocketAddrV4::new(origin_address.sin_addr.into(), origin_address.sin_port);
@@ -172,7 +173,8 @@ impl MulticastSocket {
         let socket = self.socket.as_raw_socket();
         let r = unsafe { (WSASendMsg.unwrap())(SOCKET(socket as _), &mut wsa_msg, 0, &mut sent_bytes, null_mut(), None) };
         if r != 0 {
-            return Err(io::Error::last_os_error());
+            let error = unsafe { WSAGetLastError() };
+            return Err(io::Error::from_raw_os_error(error.0));
         }
 
         Ok(sent_bytes as _)
