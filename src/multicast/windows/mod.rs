@@ -179,8 +179,8 @@ impl MulticastSocket {
 
         let mut destination = SOCKADDR_IN {
             sin_family: ADDRESS_FAMILY(AF_INET.0 as _),
-            sin_port: self.address.port().to_be(),
-            sin_addr: (*self.address.ip()).into(),
+            sin_port: dst_addr.port(),
+            sin_addr: (*dst_addr.ip()).into(),
             sin_zero: [Default::default(); 8],
         };
 
