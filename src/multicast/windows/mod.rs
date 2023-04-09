@@ -35,14 +35,38 @@ fn init() {
     });
 }
 
+unsafe fn get_interfaces() -> HashMap<InterfaceType, Ipv4Addr> {
+    let mut result = HashMap::new();
+
+    let mut buf_size = 0u32;
+    GetAdaptersInfo(None, &mut buf_size as *mut _);
+
+    let mut buf = vec![0; buf_size as usize];
+    GetAdaptersInfo(Some(buf.as_mut_ptr() as *mut _), &mut buf_size as *mut _);
+
+    let mut cursor = buf[0..size_of::<IP_ADAPTER_INFO>()].as_mut_ptr() as *mut IP_ADAPTER_INFO;
+
+    while !cursor.is_null() {
+        let item = &*cursor;
+
+        let ip = Ipv4Addr::from_str(CStr::from_ptr(item.IpAddressList.IpAddress.String.as_ptr() as *const _).to_str().unwrap()).unwrap();
+
+        result.insert(item.Index, ip);
+
+        cursor = item.Next
+    }
+
+    result
+}
+
 impl MulticastSocket {
     pub async fn new(multicast_addr: Ipv4Addr, port: u16) -> io::Result<Self> {
         init();
         let socket = unsafe {
             let socket = socket(AF_INET.0 as _, SOCK_DGRAM as _, IPPROTO_UDP.0 as _);
 
-            setsockopt(socket, IPPROTO_IP as _, IP_PKTINFO as _, Some(&[1]));
-            setsockopt(socket, SOL_SOCKET as _, SO_REUSEADDR as _, Some(&[1]));
+            setsockopt(socket, IPPROTO_IP as _, IP_PKTINFO as _, Some(&[1, 0, 0, 0]));
+            setsockopt(socket, SOL_SOCKET as _, SO_REUSEADDR as _, Some(&[1, 0, 0, 0]));
 
             let addr = SOCKADDR_IN {
                 sin_family: ADDRESS_FAMILY(AF_INET.0 as _),
