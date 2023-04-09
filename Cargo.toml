@@ -19,7 +19,7 @@ libc = { version = "^0.2" }
 nix = { version = "^0.26" }
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "^0.44", features = ["Win32_Foundation", "Win32_System_IO", "Win32_Networking_WinSock"] }
+windows = { version = "^0.44", features = ["Win32_Foundation", "Win32_System_IO", "Win32_Networking_WinSock", "Win32_NetworkManagement_IpHelper"] }
 lazy_static = { version = "^1.4" }
 
 [dev-dependencies]

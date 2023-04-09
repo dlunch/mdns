@@ -1,20 +1,26 @@
 mod wsa;
 
 use std::{
+    collections::HashMap,
+    ffi::CStr,
     io,
     mem::{size_of, size_of_val, zeroed},
     net::{IpAddr, Ipv4Addr, SocketAddrV4, UdpSocket},
     os::windows::io::{AsRawSocket, FromRawSocket},
     ptr::null_mut,
+    str::FromStr,
     sync::Once,
 };
 
 use tokio::task;
 use windows::{
     core::PSTR,
-    Win32::Networking::WinSock::{
-        bind, setsockopt, socket, WSAGetLastError, ADDRESS_FAMILY, AF_INET, CMSGHDR, IN_PKTINFO, IPPROTO_IP, IPPROTO_UDP, IP_PKTINFO, SOCKADDR_IN,
-        SOCKET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, WSABUF, WSAMSG,
+    Win32::{
+        NetworkManagement::IpHelper::{GetAdaptersInfo, IP_ADAPTER_INFO},
+        Networking::WinSock::{
+            bind, setsockopt, socket, WSAGetLastError, ADDRESS_FAMILY, AF_INET, CMSGHDR, IN_PKTINFO, IPPROTO_IP, IPPROTO_UDP, IP_PKTINFO,
+            SOCKADDR_IN, SOCKET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, WSABUF, WSAMSG,
+        },
     },
 };
 
@@ -25,6 +31,7 @@ use super::{InterfaceType, Message};
 pub struct MulticastSocket {
     socket: UdpSocket,
     address: SocketAddrV4,
+    interfaces: HashMap<InterfaceType, Ipv4Addr>,
 }
 
 fn init() {
@@ -93,6 +100,7 @@ impl MulticastSocket {
         Ok(Self {
             socket,
             address: SocketAddrV4::new(multicast_addr, port),
+            interfaces: unsafe { get_interfaces() },
         })
     }
 
@@ -167,7 +175,7 @@ impl MulticastSocket {
             };
 
             *(control_buffer[size_of::<CMSGHDR>()..].as_ptr() as *mut IN_PKTINFO) = IN_PKTINFO {
-                ipi_addr: (*dst_addr.ip()).into(),
+                ipi_addr: (*self.interfaces.get(&interface).unwrap()).into(),
                 ipi_ifindex: interface,
             }
         }
