@@ -2,10 +2,10 @@ use std::{
     io::{self, IoSlice, IoSliceMut},
     mem,
     net::{IpAddr, Ipv4Addr, SocketAddrV4, UdpSocket},
-    os::fd::{AsRawFd, RawFd},
+    os::fd::{AsRawFd, FromRawFd, RawFd},
 };
 
-use nix::sys::socket::{self, sockopt, ControlMessage, ControlMessageOwned, MsgFlags, SockaddrIn};
+use nix::sys::socket::{self, bind, socket, sockopt, AddressFamily, ControlMessage, ControlMessageOwned, MsgFlags, SockFlag, SockType, SockaddrIn};
 use tokio::io::unix::AsyncFd;
 
 use super::{InterfaceType, Message};
@@ -17,9 +17,15 @@ pub struct MulticastSocket {
 
 impl MulticastSocket {
     pub async fn new(multicast_addr: Ipv4Addr, port: u16) -> io::Result<Self> {
-        let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, port))?;
+        let socket = socket(AddressFamily::Inet, SockType::Datagram, SockFlag::empty(), None).map_err(Self::map_err)?;
 
-        socket::setsockopt(socket.as_raw_fd(), sockopt::Ipv4PacketInfo, &true).map_err(Self::map_err)?;
+        socket::setsockopt(socket, sockopt::Ipv4PacketInfo, &true).map_err(Self::map_err)?;
+        socket::setsockopt(socket, sockopt::ReuseAddr, &true).map_err(Self::map_err)?;
+
+        let addr: SockaddrIn = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into();
+        bind(socket, &addr).map_err(Self::map_err)?;
+
+        let socket = unsafe { UdpSocket::from_raw_fd(socket) };
 
         let interfaces = if_addrs::get_if_addrs()?;
 
