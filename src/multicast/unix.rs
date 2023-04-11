@@ -26,6 +26,7 @@ impl MulticastSocket {
         bind(socket, &addr).map_err(Self::map_err)?;
 
         let socket = unsafe { UdpSocket::from_raw_fd(socket) };
+        socket.set_nonblocking(true)?;
 
         let interfaces = if_addrs::get_if_addrs()?;
 
