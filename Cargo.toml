@@ -1,7 +1,10 @@
 [package]
-name = "simple_mdns"
+name = "mdns-responder"
 version = "0.1.0"
 edition = "2021"
+description = "An asynchronous mDNS responder for advertising local network services"
+license = "MIT"
+repository = "https://github.com/dlunch/mdns"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -57,7 +57,8 @@ impl MulticastSocket {
         let mut buf = vec![0; 1024];
         let mut control_buffer = nix::cmsg_space!(libc::in_pktinfo);
 
-        let msg = socket::recvmsg(fd, &mut [IoSliceMut::new(&mut buf)], Some(&mut control_buffer), MsgFlags::empty()).map_err(Self::map_err)?;
+        let mut iov = [IoSliceMut::new(&mut buf)];
+        let msg = socket::recvmsg(fd, &mut iov, Some(&mut control_buffer), MsgFlags::empty()).map_err(Self::map_err)?;
 
         let sender = msg.address.map(|x: SockaddrIn| x.into()).unwrap();
 
@@ -110,6 +111,6 @@ impl MulticastSocket {
     }
 
     fn map_err(err: nix::Error) -> io::Error {
-        io::Error::new(io::ErrorKind::Other, err)
+        io::Error::other(err)
     }
 }
